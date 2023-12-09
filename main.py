@@ -1,4 +1,5 @@
 import argparse
+import json
 import numpy as np
 
 from pydub import AudioSegment
@@ -29,6 +30,30 @@ def generate_binaural_beat(frequency_left, frequency_right, duration, volume=-20
 
     return audio + volume
 
+def generate_and_store_beat(instruction, beats):
+    duration = instruction['duration']
+    loops = int(duration / 60)  # Calculate how many loops of 60 seconds we need
+    remaining_time = duration % 60  # Calculate the remaining time
+
+    # Generate the 60 seconds loops
+    for _ in range(loops):
+        beat = generate_binaural_beat(instruction['left_frequency'],
+                                      instruction['right_frequency'],
+                                      60,  # Maximum duration is 60 seconds
+                                      instruction['volume'])
+        beat_samples = np.array(beat.get_array_of_samples(), dtype=np.int16)  # Convert to numpy array
+        beats = np.concatenate((beats, beat_samples))
+
+    # Generate the remaining time beat
+    if remaining_time > 0:
+        beat = generate_binaural_beat(instruction['left_frequency'],
+                                      instruction['right_frequency'],
+                                      remaining_time,
+                                      instruction['volume'])
+        beat_samples = np.array(beat.get_array_of_samples(), dtype=np.int16)  # Convert to numpy array
+        beats = np.concatenate((beats, beat_samples))
+
+    return beats
 
 def main():
     parser = argparse.ArgumentParser(description='Binaural beat generator')
@@ -36,11 +61,35 @@ def main():
     parser.add_argument('-r', '--right_frequency', type=float, default=444.0, help='Right channel frequency (Hz)')
     parser.add_argument('-d', '--duration', type=float, default=10.0, help='Duration of the binaural beat (seconds)')
     parser.add_argument('-v', '--volume', type=float, default=-20.0, help='Volume of the binaural beat (dBFS)')
+    parser.add_argument('-s', '--spec_file', type=str, help='Path to specification file')
 
     args = parser.parse_args()
-    binaural_beat = generate_binaural_beat(args.left_frequency, args.right_frequency, args.duration, args.volume)
-    play(binaural_beat)
+    beats = np.array([])
 
+    if args.spec_file:
+        with open(args.spec_file, 'r') as f:
+            instructions = json.load(f)
+
+        for instruction in instructions:
+            beats = generate_and_store_beat(instruction, beats)
+    else:
+        instruction = {
+            'left_frequency': args.left_frequency,
+            'right_frequency': args.right_frequency,
+            'duration': args.duration,
+            'volume': args.volume
+        }
+        beats = generate_and_store_beat(instruction, beats)
+
+    beats = AudioSegment(
+        beats.astype(np.int16).tobytes(),  # Ensure dtype is int16
+        frame_rate=44100,
+        sample_width=2,  # Set sample_width to 2 bytes
+        channels=2
+    )
+
+    # Play the entire sequence
+    play(beats)
 
 if __name__ == '__main__':
     main()
