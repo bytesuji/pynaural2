@@ -55,6 +55,21 @@ def generate_and_store_beat(instruction, beats):
 
     return beats
 
+def translate_new_spec_format(new_spec):
+    base = new_spec['base']
+    program = new_spec['program']
+    translated_instructions = []
+
+    for tone, duration in program:
+        translated_instructions.append({
+            'left_frequency': base,
+            'right_frequency': base + tone,
+            'duration': duration,
+            'volume': -20.0  # default volume
+        })
+
+    return translated_instructions, new_spec.get('loop', False)
+
 def main():
     parser = argparse.ArgumentParser(description='Binaural beat generator')
     parser.add_argument('-l', '--left_frequency', type=float, default=440.0, help='Left channel frequency (Hz)')
@@ -65,11 +80,15 @@ def main():
 
     args = parser.parse_args()
     beats = np.array([])
+    loop = False
 
     if args.spec_file:
         with open(args.spec_file, 'r') as f:
             instructions = json.load(f)
 
+        # Check if the new spec format is used
+        if 'base' in instructions:
+            instructions, loop = translate_new_spec_format(instructions)
         for instruction in instructions:
             beats = generate_and_store_beat(instruction, beats)
     else:
@@ -81,15 +100,25 @@ def main():
         }
         beats = generate_and_store_beat(instruction, beats)
 
+    # Repeat the beat sequence to form a continuous loop
+    if loop:
+        total_duration = sum(instruction['duration'] for instruction in instructions)
+        desired_duration = 2 * 60 * 60
+        repetitions = int(desired_duration / total_duration)
+        beats = np.tile(beats, repetitions)
+
     beats = AudioSegment(
         beats.astype(np.int16).tobytes(),  # Ensure dtype is int16
         frame_rate=44100,
         sample_width=2,  # Set sample_width to 2 bytes
-        channels=2
+        channels=2,
     )
 
-    # Play the entire sequence
-    play(beats)
+    if loop:
+        while True:
+            play(beats)
+    else:
+        play(beats)
 
 if __name__ == '__main__':
     main()

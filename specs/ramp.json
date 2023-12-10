@@ -1,20 +1,20 @@
 [
     {
-        "left_frequency": 440.0,
-        "right_frequency": 444.0,
-        "duration": 2.0,
+        "left_frequency": 220.0,
+        "right_frequency": 222.0,
+        "duration": 30.0,
         "volume": -20.0
     },
     {
-        "left_frequency": 440.0,
-        "right_frequency": 448.0,
-        "duration": 2.0,
+        "left_frequency": 220.0,
+        "right_frequency": 228.0,
+        "duration": 30.0,
         "volume": -20.0
     },
     {
-        "left_frequency": 440.0,
-        "right_frequency": 452.0,
-        "duration": 2.0,
+        "left_frequency": 220.0,
+        "right_frequency": 242.0,
+        "duration": 30.0,
         "volume": -20.0
     }
 ]
